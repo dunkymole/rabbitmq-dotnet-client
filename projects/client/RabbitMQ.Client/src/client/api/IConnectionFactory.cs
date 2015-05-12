@@ -47,34 +47,14 @@ namespace RabbitMQ.Client
     public interface IConnectionFactory
     {
         /// <summary>
-        /// Dictionary of client properties to be sent to the server.
-        /// </summary>
-        IDictionary<String, object> ClientProperties { get; set; }
-
-        /// <summary>
         /// Password to use when authenticating to the server.
         /// </summary>
         string Password { get; set; }
 
         /// <summary>
-        /// Maximum channel number to ask for.
-        /// </summary>
-        ushort RequestedChannelMax { get; set; }
-
-        /// <summary>
-        /// Frame-max parameter to ask for (in bytes).
-        /// </summary>
-        uint RequestedFrameMax { get; set; }
-
-        /// <summary>
         /// Heartbeat setting to request (in seconds).
         /// </summary>
         ushort RequestedHeartbeat { get; set; }
-
-        /// <summary>
-        /// When set to true, background threads will be used for I/O and heartbeats.
-        /// </summary>
-        bool UseBackgroundThreadsForIO { get; set; }
 
         /// <summary>
         /// Username to use when authenticating to the server.
@@ -90,7 +70,18 @@ namespace RabbitMQ.Client
         /// Given a list of mechanism names supported by the server, select a preferred mechanism,
         /// or null if we have none in common.
         /// </summary>
-        AuthMechanismFactory AuthMechanismFactory(string[] mechanismNames);
+        AuthMechanismFactory AuthMechanismFactory(IList<string> mechanismNames);
+
+        /// <summary>
+        /// List of RabbitMQ node <see cref="AmqpTcpEndpoint"/>s to try when
+        /// connecting.
+        /// </summary>
+        IList<AmqpTcpEndpoint> Endpoints { get; set; }
+
+        /// <summary>
+        /// Convenience method for setting a list of endpoints as URIs.
+        /// </summary>
+        IList<string> Uris { set; }
 
         /// <summary>
         /// Create a connection to the specified endpoint.
@@ -98,10 +89,36 @@ namespace RabbitMQ.Client
         IConnection CreateConnection();
 
         /// <summary>
+        /// When set to true, background threads will be used for I/O and heartbeats.
+        /// </summary>
+        bool UseBackgroundThreadsForIO { get; set; }
+
+        /// <summary>
         /// Advanced option.
         /// 
         /// What task scheduler should consumer dispatcher use.
         /// </summary>
         TaskScheduler TaskScheduler { get; set; }
+
+        /// <summary>
+        /// Advanced option.
+        /// 
+        /// Maximum channel number to ask for.
+        /// </summary>
+        ushort RequestedChannelMax { get; set; }
+
+        /// <summary>
+        /// Advanced option.
+        ///
+        /// Dictionary of client properties to be sent to the server.
+        /// </summary>
+        IDictionary<String, object> ClientProperties { get; set; }
+
+        /// <summary>
+        /// Advanced option.
+        ///
+        /// Frame-max parameter to ask for (in bytes).
+        /// </summary>
+        uint RequestedFrameMax { get; set; }
     }
 }

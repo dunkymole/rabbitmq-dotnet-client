@@ -110,7 +110,6 @@ namespace RabbitMQ.Client.Framing.Impl
 
         public Connection(IConnectionFactory factory, bool insist, IFrameHandler frameHandler)
         {
-            KnownHosts = null;
             FrameMax = 0;
             m_factory = factory;
             m_frameHandler = frameHandler;
@@ -267,8 +266,6 @@ namespace RabbitMQ.Client.Framing.Impl
         {
             get { return CloseReason == null; }
         }
-
-        public AmqpTcpEndpoint[] KnownHosts { get; set; }
 
 #if !NETFX_CORE
         public EndPoint LocalEndPoint

@@ -43,6 +43,7 @@ using RabbitMQ.Client.Framing.Impl;
 using RabbitMQ.Client.Impl;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 #if !NETFX_CORE
@@ -58,14 +59,13 @@ namespace RabbitMQ.Client
     /// A simple example of connecting to a broker:
     /// </para>
     /// <example><code>
-    ///     IConnectionFactory factory = new ConnectionFactory();
+    ///     var factory = new ConnectionFactory();
     ///     //
     ///     // The next six lines are optional:
     ///     factory.UserName = ConnectionFactory.DefaultUser;
     ///     factory.Password = ConnectionFactory.DefaultPass;
     ///     factory.VirtualHost = ConnectionFactory.DefaultVHost;
     ///     factory.HostName = hostName;
-    ///     factory.Port     = AmqpTcpEndpoint.UseDefaultPort;
     ///     //
     ///     IConnection conn = factory.CreateConnection();
     ///     //
@@ -77,7 +77,7 @@ namespace RabbitMQ.Client
     ///     conn.Close(Constants.ReplySuccess, "Closing the connection");
     /// </code></example>
     /// <para>
-    ///The same example, written more compactly with AMQP URIs:
+    /// The same example, written more compactly with a URI:
     /// </para>
     /// <example><code>
     ///     ConnectionFactory factory = new ConnectionFactory();
@@ -118,7 +118,12 @@ namespace RabbitMQ.Client
         /// Default value for desired heartbeat interval, in seconds, with zero meaning none (value: 0).
         /// </summary>
         /// <remarks>PLEASE KEEP THIS MATCHING THE DOC ABOVE.</remarks>
-        public const ushort DefaultHeartbeat = 0; //
+        public const ushort DefaultHeartbeat = 0;
+
+        /// <summary>
+        /// Default value for hostname to connect to (value: "localhost").
+        /// </summary>
+        public const string DefaultHostname = "localhost";
 
         /// <summary>
         /// Default password (value: "guest").
@@ -141,20 +146,61 @@ namespace RabbitMQ.Client
         /// <summary>
         ///  Default SASL auth mechanisms to use.
         /// </summary>
-        public static AuthMechanismFactory[] DefaultAuthMechanisms = { new PlainMechanismFactory() };
+        public static IList<AuthMechanismFactory> DefaultAuthMechanisms =
+            new List<AuthMechanismFactory>(){ new PlainMechanismFactory() };
 
         /// <summary>
         ///  SASL auth mechanisms to use.
         /// </summary>
-        public AuthMechanismFactory[] AuthMechanisms = DefaultAuthMechanisms;
+        public IList<AuthMechanismFactory> AuthMechanisms = DefaultAuthMechanisms;
 
         /// <summary>
         /// Set to true to enable automatic connection recovery.
         /// </summary>
         public bool AutomaticRecoveryEnabled;
 
+        private IList<AmqpTcpEndpoint> m_endpoints;
+
+        /// <summary>
+        /// Server node endpoints to try when connecting.
+        /// </summary>
+        public IList<AmqpTcpEndpoint> Endpoints
+        {
+            get { return m_endpoints; }
+            set;
+        }
+
         /// <summary>The host to connect to.</summary>
-        public String HostName = "localhost";
+        public IList<String> Hostnames
+        {
+            get {
+                return m_endpoints.Select<AmqpTcpEndpoint, string>((e, _) => {
+                    return e.HostName;
+                }).ToList<string>();
+            }
+            set
+            {
+                if(value.Count == 0) {
+                    throw new ArgumentException("hostname list cannot be empty!");
+                }
+                this.EndpointSelector.Endpoints = EndpointsForHostnames(value);
+            }
+        }
+
+        public IList<string> Uris
+        {
+            set
+            {
+                Endpoints = value.Select<string, AmqpTcpEndpoint>((s, _) => {
+                    return AmqpTcpEndpoint.Parse(s);
+                }).ToList<AmqpTcpEndpoint>();
+            }
+        }
+
+        /// <summary>
+        /// Selects next hostname to try when connecting.
+        /// </summary>
+        public IEndpointSelectionStrategy EndpointSelector;
 
         /// <summary>
         /// Amount of time client will wait for before re-trying  to recover connection.
@@ -199,6 +245,8 @@ namespace RabbitMQ.Client
         public ConnectionFactory()
         {
             this.TaskScheduler = TaskScheduler.Default;
+            Endpoints = EndpointsForHostnames(new List<string>(){ DefaultHostname });
+            EndpointSelector = new RoundRobinEndpointSelectionStrategy(Endpoints);
             VirtualHost = DefaultVHost;
             UserName = DefaultUser;
             RequestedHeartbeat = DefaultHeartbeat;
@@ -210,17 +258,23 @@ namespace RabbitMQ.Client
         }
 
         /// <summary>
-        /// The AMQP connection target.
+        /// Deprecated. PLease use <see cref="ConnectionFactory.Hostnames"/> instead.
+        /// </summary>
+        public string HostName
+        {
+            get { return EndpointSelector.Current.HostName; }
+            set {
+                this.Hostnames = new List<string>() { value };
+            }
+        }
+
+        /// <summary>
+        /// Current connection target.
         /// </summary>
         public AmqpTcpEndpoint Endpoint
         {
-            get { return new AmqpTcpEndpoint(HostName, Port, Ssl); }
-            set
-            {
-                Port = value.Port;
-                HostName = value.HostName;
-                Ssl = value.Ssl;
-            }
+            get { return EndpointSelector.Current; }
+            set { this.Endpoints = new List<AmqpTcpEndpoint>(){ value }; }
         }
 
         /// <summary>
@@ -283,12 +337,12 @@ namespace RabbitMQ.Client
         /// Given a list of mechanism names supported by the server, select a preferred mechanism,
         ///  or null if we have none in common.
         /// </summary>
-        public AuthMechanismFactory AuthMechanismFactory(string[] mechanismNames)
+        public AuthMechanismFactory AuthMechanismFactory(IList<string> mechanismNames)
         {
             // Our list is in order of preference, the server one is not.
             foreach (AuthMechanismFactory factory in AuthMechanisms)
             {
-                if (Array.Exists(mechanismNames, x => string.Equals(x, factory.Name, StringComparison.OrdinalIgnoreCase)))
+                if (mechanismNames.Any<string>(x => string.Equals(x, factory.Name, StringComparison.OrdinalIgnoreCase)))
                 {
                     return factory;
                 }
@@ -398,6 +452,13 @@ namespace RabbitMQ.Client
         private string UriDecode(string uri)
         {
             return System.Uri.UnescapeDataString(uri.Replace("+", "%2B"));
+        }
+
+        private IList<AmqpTcpEndpoint> EndpointsForHostnames(IList<string> hostnames)
+        {
+            return hostnames.Select<string, AmqpTcpEndpoint>((s, _) => {
+                return new AmqpTcpEndpoint(s, this.Port, this.Ssl);
+            }).ToList<AmqpTcpEndpoint>();
         }
     }
 }

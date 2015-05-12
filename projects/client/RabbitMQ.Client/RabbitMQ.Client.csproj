@@ -137,6 +137,7 @@
     <Compile Include="src\client\api\IBasicProperties.cs" />
     <Compile Include="src\client\api\IConnection.cs" />
     <Compile Include="src\client\api\IConnectionFactory.cs" />
+    <Compile Include="src\client\api\IEndpointSelectionStrategy.cs" />
     <Compile Include="src\client\api\IContentHeader.cs" />
     <Compile Include="src\client\api\IMethod.cs" />
     <Compile Include="src\client\api\IModel.cs" />
@@ -238,6 +239,7 @@
     <Compile Include="src\client\impl\RecordedNamedEntity.cs" />
     <Compile Include="src\client\impl\RecordedQueue.cs" />
     <Compile Include="src\client\impl\RecoveryAwareModel.cs" />
+    <Compile Include="src\client\impl\RoundRobinEndpointSelectionStrategy.cs" />
     <Compile Include="src\client\impl\RpcContinuationQueue.cs" />
     <Compile Include="src\client\impl\Session.cs" />
     <Compile Include="src\client\impl\SessionBase.cs" />

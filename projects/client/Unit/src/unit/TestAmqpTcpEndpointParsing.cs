@@ -108,15 +108,15 @@ namespace RabbitMQ.Client.Unit
         [Test]
         public void TestMultipleNone()
         {
-            AmqpTcpEndpoint[] es = AmqpTcpEndpoint.ParseMultiple("  ");
-            Assert.AreEqual(0, es.Length);
+            var es = AmqpTcpEndpoint.ParseMultiple("  ");
+            Assert.AreEqual(0, es.Count);
         }
 
         [Test]
         public void TestMultipleOne()
         {
-            AmqpTcpEndpoint[] es = AmqpTcpEndpoint.ParseMultiple(" host:1234 ");
-            Assert.AreEqual(1, es.Length);
+            var es = AmqpTcpEndpoint.ParseMultiple(" host:1234 ");
+            Assert.AreEqual(1, es.Count);
             Assert.AreEqual("host", es[0].HostName);
             Assert.AreEqual(1234, es[0].Port);
         }
@@ -124,8 +124,8 @@ namespace RabbitMQ.Client.Unit
         [Test]
         public void TestMultipleTwo()
         {
-            AmqpTcpEndpoint[] es = AmqpTcpEndpoint.ParseMultiple(" host:1234, other:2345 ");
-            Assert.AreEqual(2, es.Length);
+            var es = AmqpTcpEndpoint.ParseMultiple(" host:1234, other:2345 ");
+            Assert.AreEqual(2, es.Count);
             Assert.AreEqual("host", es[0].HostName);
             Assert.AreEqual(1234, es[0].Port);
             Assert.AreEqual("other", es[1].HostName);
@@ -135,8 +135,8 @@ namespace RabbitMQ.Client.Unit
         [Test]
         public void TestMultipleTwoMultipleCommas()
         {
-            AmqpTcpEndpoint[] es = AmqpTcpEndpoint.ParseMultiple(", host:1234,, ,,, other:2345,, ");
-            Assert.AreEqual(2, es.Length);
+            var es = AmqpTcpEndpoint.ParseMultiple(", host:1234,, ,,, other:2345,, ");
+            Assert.AreEqual(2, es.Count);
             Assert.AreEqual("host", es[0].HostName);
             Assert.AreEqual(1234, es[0].Port);
             Assert.AreEqual("other", es[1].HostName);

@@ -45,11 +45,12 @@ using System.Text.RegularExpressions;
 namespace RabbitMQ.Client
 {
     /// <summary>
-    /// Represents a TCP-addressable AMQP peer: a host name and port number.
+    /// Represents a TCP-addressable RabbitMQ node: a host name, port number,
+    /// and a flag that indicates if TLS should be used.
     /// </summary>
     /// <para>
     /// Some of the constructors take, as a convenience, a System.Uri
-    /// instance representing an AMQP server address. The use of Uri
+    /// instance representing an RabbitMQ node address. The use of Uri
     /// here is not standardised - Uri is simply a convenient
     /// container for internet-address-like components. In particular,
     /// the Uri "Scheme" property is ignored: only the "Host" and
@@ -72,12 +73,12 @@ namespace RabbitMQ.Client
         /// <summary>
         /// Creates a new instance of the <see cref="AmqpTcpEndpoint"/>.
         /// </summary>
-        /// <param name="hostName">Hostname.</param>
+        /// <param name="hostname">Hostname.</param>
         /// <param name="portOrMinusOne"> Port number. If the port number is -1, the default port number will be used.</param>
         /// <param name="ssl">Ssl option.</param>
-        public AmqpTcpEndpoint(string hostName, int portOrMinusOne, SslOption ssl)
+        public AmqpTcpEndpoint(string hostname, int portOrMinusOne, SslOption ssl)
         {
-            HostName = hostName;
+            HostName = hostname;
             _port = portOrMinusOne;
             Ssl = ssl;
         }
@@ -200,9 +201,9 @@ namespace RabbitMQ.Client
         /// <remarks>
         /// Accepts a string of the form "hostname:port,
         /// hostname:port, ...", where the ":port" pieces are
-        /// optional, and returns a corresponding array of <see cref="AmqpTcpEndpoint"/>s.
+        /// optional, and returns a corresponding list of <see cref="AmqpTcpEndpoint"/>s.
         /// </remarks>
-        public static AmqpTcpEndpoint[] ParseMultiple(string addresses)
+        public static IList<AmqpTcpEndpoint> ParseMultiple(string addresses)
         {
             string[] partsArr = addresses.Split(new[] {','});
             var results = new List<AmqpTcpEndpoint>();
@@ -214,7 +215,7 @@ namespace RabbitMQ.Client
                     results.Add(Parse(part));
                 }
             }
-            return results.ToArray();
+            return results;
         }
 
         /// <summary>
