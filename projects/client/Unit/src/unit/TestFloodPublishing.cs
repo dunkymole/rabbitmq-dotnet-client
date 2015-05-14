@@ -39,33 +39,53 @@
 //---------------------------------------------------------------------------
 
 using NUnit.Framework;
-using RabbitMQ.Client.Exceptions;
+
 using System;
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.Threading;
+using System.Timers;
+using RabbitMQ.Client.Exceptions;
 
 namespace RabbitMQ.Client.Unit
 {
     [TestFixture]
-    public class TestConnectionChurnHandleLeak : IntegrationFixture
+    public class TestFloodPublishing : IntegrationFixture
     {
-        [Test]
-        public void TestHandleLeak()
+        [SetUp]
+        public override void Init()
         {
-            var cf = new ConnectionFactory();
-            var me = Process.GetCurrentProcess();
-            var n = me.HandleCount;
-            Console.WriteLine("{0} handles before the test...", me.HandleCount);
-            for (var i = 0; i < 1000; i++)
+            var connFactory = new ConnectionFactory()
             {
-                using (var conn = cf.CreateConnection())
+                RequestedHeartbeat = 60,
+                AutomaticRecoveryEnabled = false
+            };
+            Conn = connFactory.CreateConnection();
+            Model = Conn.CreateModel();
+        }
+
+        [Test, Category("LongRunning")]
+        public void TestUnthrottledFloodPublishing()
+        {
+            Conn.ConnectionShutdown += (_, args) =>
+            {
+                if (args.Initiator != ShutdownInitiator.Application)
                 {
+                    Assert.Fail("Unexpected connection shutdown!");
                 }
+            };
+
+            bool elapsed = false;
+            var t = new System.Timers.Timer(1000 * 185);
+            t.Elapsed += (_sender, _args) => { elapsed = true; };
+            t.AutoReset = false;
+            t.Start();
+
+            while (!elapsed)
+            {
+                Model.BasicPublish("", "", null, new byte[2048]);
             }
-            Thread.Sleep(TimeSpan.FromSeconds(10));
-            me = Process.GetCurrentProcess();
-            Console.WriteLine("{0} handles after the test...", me.HandleCount);
-            Assert.That(me.HandleCount, Is.LessThanOrEqualTo(n));
+            Assert.IsTrue(Conn.IsOpen);
+            t.Dispose();
         }
     }
 }
